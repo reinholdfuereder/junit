@@ -38,7 +38,28 @@ public class Timeout implements TestRule {
     /**
      * Optional system property with global timeout in milliseconds.
      */
-    public static final String GLOBAL_TIMEOUT_PROPERTY_NAME = "org.junit.rules.timeout.global";
+    public static final String GLOBAL_TIMEOUT_MILLIS_PROPERTY_NAME = "org.junit.rules.timeout.global.millis";
+    /**
+     * Optional system property for global timeout strategy to use in case there was a local timeout set as well.
+     */
+    public static final String GLOBAL_TIMEOUT_STRATEGY_PROPERTY_NAME = "org.junit.rules.timeout.global.strategy";
+
+    /**
+     * Global timeout strategy in case there was a local timeout set as well.
+     */
+    public static enum GlobalTimeoutStrategy {
+        /**
+         * Should the global timeout conditionally override specific test timeouts that are higher then the global timeout: to
+         * make sure a maximum test duration is not exceeded; also allows to test that something really must be very quick.
+         */
+        GLOBAL_TIMEOUT_OVERRIDES_HIGHER_LOCAL_TIMEOUT,
+        /**
+         * Should a specific timeout always override the global timeout: e.g. to avoid the need to increase the global timeout,
+         * just because a single test takes longer.
+         */
+        GLOBAL_TIMEOUT_NEVER_OVERRIDES_LOCAL_TIMEOUT;
+    }
+
 
     private final long fTimeout;
     private final TimeUnit fTimeUnit;
@@ -124,10 +145,19 @@ public class Timeout implements TestRule {
     }
 
     /**
-     * Returns global timeout set via system property, or 0 if none is set.
+     * Returns global timeout in milliseconds set via system property, or 0 if none is set.
      */
     public static long getGlobalTimeoutInMillis() {
-        return Long.getLong(GLOBAL_TIMEOUT_PROPERTY_NAME, 0);
+        return Long.getLong(GLOBAL_TIMEOUT_MILLIS_PROPERTY_NAME, 0);
+    }
+
+    /**
+     * Returns global timeout strategy set via system property, or 0 if none is set.
+     */
+    public static GlobalTimeoutStrategy getGlobalTimeoutStrategy() {
+        String strategyStr = System.getProperty(GLOBAL_TIMEOUT_STRATEGY_PROPERTY_NAME, GlobalTimeoutStrategy.GLOBAL_TIMEOUT_OVERRIDES_HIGHER_LOCAL_TIMEOUT.toString());
+        GlobalTimeoutStrategy strategy = GlobalTimeoutStrategy.valueOf(strategyStr);
+        return strategy;
     }
 
     public static Timeout newTimeoutFromGlobalTimeout() {

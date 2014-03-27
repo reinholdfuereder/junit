@@ -23,6 +23,7 @@ import org.junit.internal.runners.statements.RunBefores;
 import org.junit.rules.RunRules;
 import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
+import org.junit.rules.Timeout.GlobalTimeoutStrategy;
 import org.junit.runner.Description;
 import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.model.FrameworkMethod;
@@ -349,7 +350,7 @@ public class BlockJUnit4ClassRunner extends ParentRunner<FrameworkMethod> {
             Statement statement) {
         List<TestRule> testRules = getTestRules(target);
 
-        // In order to allow potentially global timeout rule, find a specific one and take it out, but remember it: 
+        // In order to allow potentially global timeout rule, find a specific one and take it out, but remember it:
         Timeout specificTimeoutRule = findTimeoutRule(testRules);
         if (specificTimeoutRule != null) {
             assertTrue(testRules.remove(specificTimeoutRule));
@@ -404,16 +405,19 @@ public class BlockJUnit4ClassRunner extends ParentRunner<FrameworkMethod> {
 
     private Statement withPotentialGlobalTimeout(FrameworkMethod method, Timeout specificTimeoutRule,
             Statement statement) {
-        //TODO: different global timeout strategy variants can be useful:
-        // (a) should the global timeout conditionally override specific test timeouts that are higher then the global timeout: to make sure a maximum test duration is not exceeded; also allows to test that something really must be very quick
-        // (b) should a specific timeout always override the global timeout: e.g. to avoid the need to increase the global timeout, just because a single test takes longer
         Timeout timeoutRule = Timeout.newTimeoutFromGlobalTimeout();
 
         if (specificTimeoutRule != null) {
-            // For (a):
-            timeoutRule = specificTimeoutRule.newTimeoutFromGlobalTimeoutIfLessThanThisTimeout();
-            // Or for (b):
-//            timeoutRule = specificTimeoutRule;
+            switch (Timeout.getGlobalTimeoutStrategy()) {
+            case GLOBAL_TIMEOUT_NEVER_OVERRIDES_LOCAL_TIMEOUT:
+                timeoutRule = specificTimeoutRule;
+                break;
+            case GLOBAL_TIMEOUT_OVERRIDES_HIGHER_LOCAL_TIMEOUT:
+                timeoutRule = specificTimeoutRule.newTimeoutFromGlobalTimeoutIfLessThanThisTimeout();
+                break;
+            default:
+                throw new IllegalArgumentException("Unsupported global timeout strategy: " + Timeout.getGlobalTimeoutStrategy());
+            }
         }
 
         // TODO: if instantiating FailOnTimeout here, than the fields of Timeout need to be opened:

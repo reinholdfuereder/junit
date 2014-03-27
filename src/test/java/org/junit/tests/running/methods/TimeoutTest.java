@@ -3,16 +3,14 @@ package org.junit.tests.running.methods;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
+
 import junit.framework.JUnit4TestAdapter;
 import junit.framework.TestResult;
 import org.junit.After;
@@ -21,6 +19,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
+import org.junit.rules.Timeout.GlobalTimeoutStrategy;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Result;
 
@@ -243,7 +242,7 @@ public class TimeoutTest {
     }
 
 
- // --- Below are deadlock tests ---
+ // --- Below are global timeout related tests ---
     public static abstract class AbstractLockedWithDeadlockTest {
 
         private final ReentrantLock lock1 = new ReentrantLock();
@@ -330,7 +329,7 @@ public class TimeoutTest {
     @Test
     public void timeoutFailureMultithreadedDeadlockWithGlobalTimeoutOverridingTheGreaterTestClassTimeout() throws Exception {
         try {
-            System.setProperty(Timeout.GLOBAL_TIMEOUT_PROPERTY_NAME, "100");
+            System.setProperty(Timeout.GLOBAL_TIMEOUT_MILLIS_PROPERTY_NAME, "100");
 
             JUnitCore core = new JUnitCore();
             Result result = core.run(LockedWithDeadlockTest.class);
@@ -340,10 +339,45 @@ public class TimeoutTest {
             assertThat(exception.getMessage(), containsString("test timed out after 100 milliseconds"));
             assertThat(stackForException(exception), containsString("Thread.join"));
         } finally {
-            System.clearProperty(Timeout.GLOBAL_TIMEOUT_PROPERTY_NAME);
+            System.clearProperty(Timeout.GLOBAL_TIMEOUT_MILLIS_PROPERTY_NAME);
         }
     }
-// --- Above are deadlock tests ---
+
+    @Test
+    public void timeoutFailureMultithreadedDeadlockWithGlobalTimeoutNeverOverridingTheGreaterTestClassTimeout() throws Exception {
+        try {
+            System.setProperty(Timeout.GLOBAL_TIMEOUT_MILLIS_PROPERTY_NAME, "100");
+            System.setProperty(Timeout.GLOBAL_TIMEOUT_STRATEGY_PROPERTY_NAME, GlobalTimeoutStrategy.GLOBAL_TIMEOUT_NEVER_OVERRIDES_LOCAL_TIMEOUT.toString());
+
+            JUnitCore core = new JUnitCore();
+            Result result = core.run(LockedWithDeadlockTest.class);
+            assertEquals(1, result.getRunCount());
+            assertEquals(1, result.getFailureCount());
+            Throwable exception = result.getFailures().get(0).getException();
+            assertThat(exception.getMessage(), containsString("test timed out after 150 milliseconds"));
+            assertThat(stackForException(exception), containsString("Thread.join"));
+        } finally {
+            System.clearProperty(Timeout.GLOBAL_TIMEOUT_MILLIS_PROPERTY_NAME);
+            System.clearProperty(Timeout.GLOBAL_TIMEOUT_STRATEGY_PROPERTY_NAME);
+        }
+    }
+
+    @Test
+    public void testDefaultGlobalTimeoutStrategy() throws Exception {
+        assertEquals(GlobalTimeoutStrategy.GLOBAL_TIMEOUT_OVERRIDES_HIGHER_LOCAL_TIMEOUT, Timeout.getGlobalTimeoutStrategy());
+    }
+
+    @Test
+    public void testGlobalTimeoutStrategy() throws Exception {
+        try {
+            System.setProperty(Timeout.GLOBAL_TIMEOUT_STRATEGY_PROPERTY_NAME, GlobalTimeoutStrategy.GLOBAL_TIMEOUT_NEVER_OVERRIDES_LOCAL_TIMEOUT.toString());
+
+            assertEquals(GlobalTimeoutStrategy.GLOBAL_TIMEOUT_NEVER_OVERRIDES_LOCAL_TIMEOUT, Timeout.getGlobalTimeoutStrategy());
+        } finally {
+            System.clearProperty(Timeout.GLOBAL_TIMEOUT_STRATEGY_PROPERTY_NAME);
+        }
+    }
+// --- Above are global timeout related tests ---
 
 
     @Test
