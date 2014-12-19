@@ -12,6 +12,7 @@ import static org.junit.Assert.fail;
 
 import java.util.concurrent.TimeUnit;
 
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.internal.runners.statements.FailOnTimeout;
@@ -24,6 +25,7 @@ import org.junit.runners.model.TestTimedOutException;
  */
 public class FailOnTimeoutTest {
     private static final int TIMEOUT = 100;
+    private static final int DURATION_THAT_EXCEEDS_TIMEOUT = 60 * 60 * 1000; //1 hour
 
     @Rule
     public final ExpectedException thrown = ExpectedException.none();
@@ -36,13 +38,13 @@ public class FailOnTimeoutTest {
     @Test
     public void throwsTestTimedOutException() throws Throwable {
         thrown.expect(TestTimedOutException.class);
-        evaluateWithWaitDuration(TIMEOUT + 50);
+        evaluateWithWaitDuration(DURATION_THAT_EXCEEDS_TIMEOUT);
     }
 
     @Test
     public void throwExceptionWithNiceMessageOnTimeout() throws Throwable {
         thrown.expectMessage("test timed out after 100 milliseconds");
-        evaluateWithWaitDuration(TIMEOUT + 50);
+        evaluateWithWaitDuration(DURATION_THAT_EXCEEDS_TIMEOUT);
     }
 
     @Test
@@ -57,7 +59,7 @@ public class FailOnTimeoutTest {
             throws Throwable {
         thrown.expect(TestTimedOutException.class);
         evaluateWithWaitDuration(0);
-        evaluateWithWaitDuration(TIMEOUT + 50);
+        evaluateWithWaitDuration(DURATION_THAT_EXCEEDS_TIMEOUT);
     }
 
     @Test
@@ -68,14 +70,14 @@ public class FailOnTimeoutTest {
             evaluateWithException(new RuntimeException());
         } catch (Throwable expected) {
         }
-        evaluateWithWaitDuration(TIMEOUT + 50);
+        evaluateWithWaitDuration(DURATION_THAT_EXCEEDS_TIMEOUT);
     }
 
     @Test
     public void throwsExceptionWithTimeoutValueAndTimeUnitSet()
             throws Throwable {
         try {
-            evaluateWithWaitDuration(TIMEOUT + 50);
+            evaluateWithWaitDuration(DURATION_THAT_EXCEEDS_TIMEOUT);
             fail("No exception was thrown when test timed out");
         } catch (TestTimedOutException e) {
             assertEquals(TIMEOUT, e.getTimeout());

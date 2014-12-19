@@ -6,10 +6,12 @@ import java.io.IOException;
 import org.junit.Rule;
 
 /**
- * The TemporaryFolder Rule allows creation of files and folders that are
- * guaranteed to be deleted when the test method finishes (whether it passes or
- * fails):
+ * The TemporaryFolder Rule allows creation of files and folders that should
+ * be deleted when the test method finishes (whether it passes or
+ * fails). Whether the deletion is successful or not is not checked by this rule.
+ * No exception will be thrown in case the deletion fails.
  *
+ * <p>Example of usage:
  * <pre>
  * public static class HasTempFolder {
  *  &#064;Rule
@@ -92,6 +94,7 @@ public class TemporaryFolder extends ExternalResource {
         File file = getRoot();
         for (int i = 0; i < folderNames.length; i++) {
             String folderName = folderNames[i];
+            validateFolderName(folderName);
             file = new File(file, folderName);
             if (!file.mkdir() && isLastElementInArray(i, folderNames)) {
                 throw new IOException(
@@ -99,6 +102,21 @@ public class TemporaryFolder extends ExternalResource {
             }
         }
         return file;
+    }
+    
+    /**
+     * Validates if multiple path components were used while creating a folder.
+     * 
+     * @param folderName
+     *            Name of the folder being created
+     */
+    private void validateFolderName(String folderName) throws IOException {
+        File tempFile = new File(folderName);
+        if (tempFile.getParent() != null) {
+            String errorMsg = "Folder name cannot consist of multiple path components separated by a file separator."
+                    + " Please use newFolder('MyParentFolder','MyFolder') to create hierarchies of folders";
+            throw new IOException(errorMsg);
+        }
     }
 
     private boolean isLastElementInArray(int index, String[] array) {
