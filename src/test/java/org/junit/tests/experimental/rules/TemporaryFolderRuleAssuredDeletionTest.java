@@ -75,4 +75,23 @@ public class TemporaryFolderRuleAssuredDeletionTest {
         PrintableResult result = testResult(HasTempFolderWithoutAssuredDeletion.class);
         assertThat(result, isSuccessful());
     }
+    
+    public static class HasTempFolderWithAssuredDeletionAndFailingTest {
+        @Rule public TemporaryFolder folder = StubTemporaryFolder.builder()
+                .assureDeletion()
+                .build();
+
+        @Test
+        public void testThatFails() {
+            fail("test case failure that might lead to temp folder deletion problem");
+        }
+    }
+
+    @Test
+    public void testStrictVerificationFailureDoesNotHideTestFailure() {
+        PrintableResult result = testResult(HasTempFolderWithAssuredDeletionAndFailingTest.class);
+        assertThat(result, failureCountIs(1)); // TODO: one could also want 2 test failures: first the test case failure, and then in addition the one from the clean up problem
+        assertThat(result.toString(), containsString("test case failure that might lead to temp folder deletion problem"));
+    }
+
 }
